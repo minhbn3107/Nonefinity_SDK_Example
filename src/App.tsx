@@ -1,7 +1,11 @@
 /// <reference types="vite/client" />
 
-import { useEffect, useState, useCallback } from "react";
-import { ChatWidget, NonefinityClient } from "@nonefinity/ai-sdk";
+import { useEffect, useState, useCallback, useRef } from "react";
+import {
+    ChatWidget,
+    NonefinityClient,
+    getDefaultApiUrl,
+} from "@nonefinity/ai-sdk";
 import "./index.css";
 
 type SessionStatus = "idle" | "loading" | "ready" | "error";
@@ -257,11 +261,25 @@ const HeadlessChat = ({
         apiKey,
         apiUrl,
     });
+    const messagesRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const node = messagesRef.current;
+        if (!node) return;
+        node.scrollTo({
+            top: node.scrollHeight,
+            behavior: messages.length > 1 ? "smooth" : "auto",
+        });
+    }, [messages, isThinking]);
 
     return (
         <div className="headless-chat">
             <h3>Headless Mode (Custom UI)</h3>
-            <div className="headless-messages" aria-live="polite">
+            <div
+                className="headless-messages"
+                aria-live="polite"
+                ref={messagesRef}
+            >
                 {messages.length === 0 && !isThinking && (
                     <div className="headless-empty">
                         <h4>No messages yet</h4>
@@ -309,7 +327,8 @@ const HeadlessChat = ({
 export default function App() {
     const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
     const apiUrl =
-        (import.meta.env.VITE_API_URL as string | undefined) || "/api/v1";
+        (import.meta.env.VITE_API_URL as string | undefined) ||
+        getDefaultApiUrl();
     const envChatConfig =
         (import.meta.env.VITE_CHAT_CONFIG_ID as string | undefined) || "";
 
@@ -334,11 +353,11 @@ export default function App() {
             return;
         }
 
-        const instance = new NonefinityClient({ apiKey, apiUrl });
+        const instance = new NonefinityClient({ apiKey, debug: true });
         setClient(instance);
         setStatus("idle");
         setError(null);
-    }, [apiKey, apiUrl]);
+    }, [apiKey]);
 
     const resolveChatConfigId = async (): Promise<string> => {
         if (!client) {
@@ -581,7 +600,6 @@ export default function App() {
                 <ChatWidget
                     sessionId={sessionId as string}
                     apiKey={apiKey}
-                    apiUrl={apiUrl}
                     position="bottom-right"
                     title="Nonefinity Assistant"
                     placeholder="Type a message…"
